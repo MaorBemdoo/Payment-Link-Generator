@@ -164,7 +164,7 @@ function App() {
           }}
         >
           <div
-            className="grid place-content-center text-center bg-white w-[400px] rounded-lg p-4"
+            className="grid place-content-center text-center bg-white min-w-[500px] rounded-lg p-4"
             onClick={e => e.stopPropagation()}
           >
             <a href={link} className="text-lg underline">{link}</a>
