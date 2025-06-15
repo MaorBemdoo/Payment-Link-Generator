@@ -1,43 +1,72 @@
 import { useEffect, useState } from "react";
-import { getCurrencies } from "./lib";
-import type { Currency } from "./types";
+import { getCurrencies, getDefaultExpiryDate } from "./lib";
+import type { Currency, FormErrors, FormValues } from "./types";
 
 function App() {
-  const [{currency, amount, description, expiryDate}, setFormValues] = useState({
-    currency: 'NGN',
-    amount: '',
-    description: '',
-    expiryDate: new Date().getFullYear() + "-" + (new Date().getMonth() < 9 ? '0' : '') + (new Date().getMonth() + 1) + "-" + ((new Date().getDate() + 1) < 10 ? '0' : '') + (new Date().getDate() + 1)
+  const [formValues, setFormValues] = useState<FormValues>({
+    currency: "NGN",
+    amount: "",
+    description: "",
+    expiryDate: getDefaultExpiryDate(),
   });
-  const [currencies, setCurrenies] = useState<Currency[] | null>(null)
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [currencies, setCurrencies] = useState<Currency[] | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const currencyData = await getCurrencies()
-        setCurrenies(currencyData?.data)
+        const currencyData = await getCurrencies();
+        setCurrencies(currencyData?.data);
       } catch (err) {
-        console.error("Error fetching currencies", err)
+        console.error("Error fetching currencies", err);
       }
-    })()
-  }, [])
+    })();
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const validate = (values: FormValues): FormErrors => {
+    const errors: FormErrors = {};
+    if (!values.currency) errors.currency = "Currency is required";
+    if (!values.amount) errors.amount = "Amount is required";
+    else if (isNaN(Number(values.amount)) || Number(values.amount) <= 0)
+      errors.amount = "Amount must be a positive number";
+    if (!values.description) errors.description = "Description is required";
+    if (!values.expiryDate) errors.expiryDate = "Expiry date is required";
+    else if (new Date(values.expiryDate) < new Date())
+      errors.expiryDate = "Expiry date must be in the future";
+    return errors;
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormValues((prevValues) => ({
       ...prevValues,
-      [name]: value
+      [name]: value,
+    }));
+    setFormErrors((prevErrors) => ({
+      ...prevErrors,
+      [name]: undefined,
     }));
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    alert(`Generating invoice for ${amount} ${currency} with description "${description}" and expiry date ${expiryDate}`);
-  }
+    const errors = validate(formValues);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    alert(
+      `Generating invoice for ${formValues.amount} ${formValues.currency} with description "${formValues.description}" and expiry date ${formValues.expiryDate}`
+    );
+  };
 
   return (
-    <div className="h-screen w-screen bg-slate-200 grid place-content-center" >
-      <form className="w-[400px] p-4 rounded-lg shadow-md bg-white border space-y-4 *:*:[label]:text-lg *:*:[label]:font-semibold" onSubmit={handleSubmit}>
+    <div className="h-screen w-screen bg-slate-200 grid place-content-center">
+      <form
+        className="w-[400px] p-4 rounded-lg shadow-md bg-white border space-y-4 *:*:[label]:text-lg *:*:[label]:font-semibold"
+        onSubmit={handleSubmit}
+        noValidate
+      >
         <div>
           <label htmlFor="amount">Amount: </label>
           <div>
@@ -45,16 +74,18 @@ function App() {
               id="currency"
               name="currency"
               className="border border-gray-300 bg-slate-100 py-2 rounded-l-md w-1/6"
-              value={currency}
+              value={formValues.currency}
               onChange={handleChange}
             >
-                <option value="" disabled>
-                  {currencies === null ? "Loading currencies..." : "Select currency"}
-                </option>
-                {currencies &&
+              <option value="" disabled>
+                {currencies === null
+                  ? "Loading currencies..."
+                  : "Select currency"}
+              </option>
+              {currencies &&
                 currencies.map(({ key }) => (
                   <option key={key} value={key}>
-                  {key}
+                    {key}
                   </option>
                 ))}
             </select>
@@ -66,30 +97,54 @@ function App() {
               inputMode="decimal"
               pattern="[0-9]*"
               min="0"
-              value={amount}
+              value={formValues.amount}
               onChange={handleChange}
             />
           </div>
+          {formErrors.currency && (
+            <div className="text-red-600 text-sm">{formErrors.currency}</div>
+          )}
+          {formErrors.amount && (
+            <div className="text-red-600 text-sm">{formErrors.amount}</div>
+          )}
         </div>
         <div>
           <label htmlFor="description">Description</label>
-          <textarea name="description" id="description" className="border border-gray-300 p-2 rounded-md mt-2 w-full resize-none" value={description} onChange={handleChange} />
+          <textarea
+            name="description"
+            id="description"
+            className="border border-gray-300 p-2 rounded-md mt-2 w-full resize-none"
+            value={formValues.description}
+            onChange={handleChange}
+          />
+          {formErrors.description && (
+            <div className="text-red-600 text-sm">{formErrors.description}</div>
+          )}
         </div>
         <div>
           <label htmlFor="expiryDate">Expiry Date: </label>
-            <input
+          <input
             type="date"
             id="expiryDate"
             name="expiryDate"
             className="border border-gray-300 p-2 rounded-md mt-2 w-full"
-            value={expiryDate}
+            value={formValues.expiryDate}
             onChange={handleChange}
-            />
+            min={getDefaultExpiryDate()}
+          />
+          {formErrors.expiryDate && (
+            <div className="text-red-600 text-sm">{formErrors.expiryDate}</div>
+          )}
         </div>
-        <button className="px-4 py-2 w-full bg-blue-700 rounded-md cursor-pointer hover:bg-blue-600 focus:scale-85" type="submit">Generate</button>
+        <button
+          className="px-4 py-2 w-full bg-blue-700 rounded-md cursor-pointer hover:bg-blue-600 focus:scale-85"
+          type="submit"
+        >
+          Generate
+        </button>
       </form>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
