@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCurrencies, getDefaultExpiryDate } from "./lib";
+import { generateLink, getCurrencies, getDefaultExpiryDate } from "./lib";
 import type { Currency, FormErrors, FormValues } from "./types";
 
 function App() {
@@ -11,6 +11,9 @@ function App() {
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [currencies, setCurrencies] = useState<Currency[] | null>(null);
+  const [loading, setLoading] = useState(false)
+  const [openModal, setOpenModal] = useState(false)
+  const [link, setLink] = useState("")
 
   useEffect(() => {
     (async () => {
@@ -50,18 +53,20 @@ function App() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const errors = validate(formValues);
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
-    alert(
-      `Generating invoice for ${formValues.amount} ${formValues.currency} with description "${formValues.description}" and expiry date ${formValues.expiryDate}`
-    );
+    setLoading(true)
+    const link = await generateLink()
+    setLink(link)
+    setLoading(false)
+    setOpenModal(true)
   };
 
   return (
-    <div className="h-screen w-screen bg-slate-200 grid place-content-center">
+    <div className="relative h-screen w-screen bg-slate-200 grid place-content-center">
       <form
         className="w-[400px] p-4 rounded-lg shadow-md bg-white border space-y-4 *:*:[label]:text-lg *:*:[label]:font-semibold"
         onSubmit={handleSubmit}
@@ -137,12 +142,38 @@ function App() {
           )}
         </div>
         <button
-          className="px-4 py-2 w-full bg-blue-700 rounded-md cursor-pointer hover:bg-blue-600 focus:scale-85"
+          className="px-4 py-2 w-full bg-blue-700 rounded-md cursor-pointer hover:bg-blue-600"
           type="submit"
+          disabled={loading}
         >
-          Generate
+          { loading ? "Generating..." : "Generate" }
         </button>
       </form>
+      {
+        openModal &&
+        <div
+          className="fixed grid place-content-center h-full w-full bg-black/70"
+          onClick={() => {
+            setOpenModal(false);
+            setFormValues({
+              currency: "NGN",
+              amount: "",
+              description: "",
+              expiryDate: getDefaultExpiryDate(),
+            });
+          }}
+        >
+          <div
+            className="grid place-content-center text-center bg-white w-[400px] rounded-lg p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <a href={link} className="text-lg underline">{link}</a>
+            <p className="text-sm text-yellow-500">
+              This link expires in {new Date(formValues.expiryDate).getDate() - new Date().getDate()} days
+            </p>
+          </div>
+        </div>
+      }
     </div>
   );
 }

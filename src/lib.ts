@@ -18,3 +18,9 @@ export const getDefaultExpiryDate = () => {
   d.setDate(d.getDate() + 1);
   return d.toISOString().slice(0, 10);
 };
+
+export const generateLink = async () => {
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  const id = Math.random().toString(36).substr(2, 6);
+  return `${import.meta.env.VITE_BASE_URL}/pay/${id}`;
+};
