@@ -1,13 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getCurrencies } from "./lib";
+import type { Currency } from "./types";
 
 function App() {
-
   const [{currency, amount, description, expiryDate}, setFormValues] = useState({
     currency: 'NGN',
     amount: '',
     description: '',
-    expiryDate: ''
+    expiryDate: new Date().getFullYear() + "-" + (new Date().getMonth() < 9 ? '0' : '') + (new Date().getMonth() + 1) + "-" + ((new Date().getDate() + 1) < 10 ? '0' : '') + (new Date().getDate() + 1)
   });
+  const [currencies, setCurrenies] = useState<Currency[] | null>(null)
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const currencyData = await getCurrencies()
+        setCurrenies(currencyData?.data)
+      } catch (err) {
+        console.error("Error fetching currencies", err)
+      }
+    })()
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -35,16 +48,15 @@ function App() {
               value={currency}
               onChange={handleChange}
             >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="JPY">JPY</option>
-              <option value="CAD">CAD</option>
-              <option value="AUD">AUD</option>
-              <option value="INR">INR</option>
-              <option value="NGN">NGN</option>
-              <option value="ZAR">ZAR</option>
-              <option value="CNY">CNY</option>
+                <option value="" disabled>
+                  {currencies === null ? "Loading currencies..." : "Select currency"}
+                </option>
+                {currencies &&
+                currencies.map(({ key }) => (
+                  <option key={key} value={key}>
+                  {key}
+                  </option>
+                ))}
             </select>
             <input
               type="number"
